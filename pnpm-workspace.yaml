@@ -1,0 +1,9 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Force a single copy of these across the workspace.
+# Two copies of yjs (or lexical) in one bundle break instanceof checks
+# and trigger the "Yjs was already imported" warning. See PLAN.md, pitfall 3.
+overrides:
+  yjs: 13.6.33
