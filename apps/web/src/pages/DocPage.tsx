@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { Editor } from '@/Editor'
 
 export default function DocPage() {
   // The route is /doc/:id, so id is always present when this page renders.
@@ -28,10 +29,9 @@ export default function DocPage() {
 
       <Separator />
 
-      {/* The Lexical editor goes here (Stage 3). */}
-      <div className="grid min-h-[60vh] place-items-center rounded-xl border border-dashed bg-muted/30 text-sm text-muted-foreground">
-        Editor coming soon
-      </div>
+      {/* key: give each document a fresh editor. Lexical can't repoint a mounted
+          editor at another doc, so navigating /doc/a → /doc/b must remount it. */}
+      <Editor key={id} />
     </div>
   )
 }
