@@ -1,5 +1,6 @@
 import { FileTextIcon } from 'lucide-react'
 import { Link, NavLink } from 'react-router'
+import { IdentityButton } from '@/components/identity-button'
 import { ModeToggle } from '@/components/mode-toggle'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -28,6 +29,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          <IdentityButton />
           <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
           <ModeToggle />
         </div>

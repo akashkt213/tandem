@@ -193,6 +193,17 @@ two-client Playwright test could hit.
     established" comes from the StrictMode double mount. A production build shows none.
 18. **Undo grouping:** the Yjs UndoManager merges your edits made within 500 ms into one
     undo step, and only ever undoes your own edits.
+19. **Don't change `username`/`cursorColor` on a mounted `CollaborationPlugin`.** They're
+    dependencies of its provider effect, so a change disconnects and reconnects, and the
+    disconnect is queued behind a promise, so it can land *after* the reconnect and leave the
+    editor offline. We pass the name once at mount and write later renames straight into
+    awareness (`useSyncIdentityToAwareness` in `collab/presence.ts`). Lexical reads name and
+    colour back from awareness, so cursor labels update live.
+20. **Ghost users for ~30 s after closing a tab** (when the editor had focus). On `pagehide`
+    Lexical and Hocuspocus clear the awareness state; then Lexical's blur handler recreates
+    it. That last message reaches the server after it has dropped the connection, so it's
+    never removed until Yjs's 30 s awareness timeout. Fixed in `providerFactory.ts`
+    (`guardAwarenessWhileLeaving`): once the page is hiding, non-null states are ignored.
 
 ## 6. Stages
 
@@ -200,6 +211,6 @@ two-client Playwright test could hit.
 2. ✅ Root workspace scaffold, `pnpm dev`, README. No Turborepo: `shared` is consumed as
    source and there's nothing to cache yet; revisit when CI time matters in Phase 2.
    `apps/web` and `apps/server` are left empty for you to scaffold.
-3. Lexical rich text + toolbar (headings, B/I/U, lists, links), no collab
-4. Collab: provider adapter, `/doc/:id`, cursors, presence, name prompt
+3. ✅ Lexical rich text + toolbar (headings, B/I/U, lists, links), no collab
+4. ✅ Collab: provider adapter, `/doc/:id`, cursors, presence, name prompt
 5. Playwright: two-context sync + late-joiner

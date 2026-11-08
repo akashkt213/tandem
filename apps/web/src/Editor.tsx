@@ -6,7 +6,9 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalExtensionComposer } from '@lexical/react/LexicalExtensionComposer'
 import { RichTextExtension } from '@lexical/rich-text'
 import { defineExtension, type EditorThemeClasses } from 'lexical'
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useIdentity } from '@/collab/identity'
+import { useCollabProvider, useSyncIdentityToAwareness } from '@/collab/presence'
 import { createProvider } from '@/collab/providerFactory'
 import { Toolbar } from '@/Toolbar'
 import EditorStateLogger from './lib/editorLogger'
@@ -79,6 +81,18 @@ export function Editor({ docId }: EditorProps) {
     // scrolls together with the text, so cursors stay on the right line.
     const cursorsContainerRef = useRef<HTMLDivElement>(null)
 
+    // Your name/colour as of mount, for CollaborationPlugin. Deliberately frozen:
+    // changing these props makes the plugin reconnect (see useSyncIdentityToAwareness),
+    // so renames go straight to awareness instead.
+    const identity = useIdentity()
+    const [initialIdentity] = useState(() => ({
+        name: identity.name,
+        color: identity.color,
+        // Must keep the same object identity: it's an effect dependency in the plugin.
+        awarenessData: { userId: identity.id },
+    }))
+    useSyncIdentityToAwareness(useCollabProvider(), identity)
+
     return (
         // Holds the shared collaboration state (yjsDocMap, user name/color) for the
         // editors below it. CollaborationPlugin must be inside one.
@@ -94,6 +108,9 @@ export function Editor({ docId }: EditorProps) {
                     // Known race: two clients opening a brand-new doc at the same moment
                     // can both add one (a stray blank line). Fine for Phase 1.
                     shouldBootstrap
+                    username={initialIdentity.name}
+                    cursorColor={initialIdentity.color}
+                    awarenessData={initialIdentity.awarenessData}
                     cursorsContainerRef={cursorsContainerRef}
                 />
                 {/* Fixed-height card: a flex column where the toolbar keeps its height and the
