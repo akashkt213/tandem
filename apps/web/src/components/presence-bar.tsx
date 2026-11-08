@@ -38,7 +38,7 @@ export function PresenceBar() {
       </Badge>
 
       {users.length > 0 && (
-        <AvatarGroup aria-label={`${users.length} ${users.length === 1 ? 'person' : 'people'} here`}>
+        <AvatarGroup role="group" aria-label={`${users.length} ${users.length === 1 ? 'person' : 'people'} here`}>
           {shown.map((user) => (
             <Tooltip key={user.key}>
               <TooltipTrigger asChild>

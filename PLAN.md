@@ -213,4 +213,5 @@ two-client Playwright test could hit.
    `apps/web` and `apps/server` are left empty for you to scaffold.
 3. ✅ Lexical rich text + toolbar (headings, B/I/U, lists, links), no collab
 4. ✅ Collab: provider adapter, `/doc/:id`, cursors, presence, name prompt
-5. Playwright: two-context sync + late-joiner
+5. ✅ Playwright: two-context sync + late-joiner (plus presence, names, undo). In
+   `apps/web/e2e/`; runs in Chromium, and also in Edge on Windows.

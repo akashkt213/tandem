@@ -6,7 +6,7 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalExtensionComposer } from '@lexical/react/LexicalExtensionComposer'
 import { RichTextExtension } from '@lexical/rich-text'
 import { defineExtension, type EditorThemeClasses } from 'lexical'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useIdentity } from '@/collab/identity'
 import { useCollabProvider, useSyncIdentityToAwareness } from '@/collab/presence'
 import { createProvider } from '@/collab/providerFactory'
@@ -135,7 +135,7 @@ export function Editor({ docId }: EditorProps) {
                                     </div>
                                 }
                             />
-                            <div ref={cursorsContainerRef} />
+                            <div ref={cursorsContainerRef} data-testid="remote-cursors" />
                         </div>
                     </div>
                 </div>
