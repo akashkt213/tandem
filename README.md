@@ -48,7 +48,33 @@ pnpm --filter server dev
 |---|---|
 | `pnpm build` | Runs `build` in every package that has one |
 | `pnpm typecheck` | Runs `typecheck` in every package that has one |
-| `pnpm test:e2e` | Runs the `test:e2e` script in the package named `web` (Playwright, Stage 5) |
+| `pnpm test:e2e` | Runs the Playwright end-to-end tests (see below) |
+
+## End-to-end tests
+
+The tests in `apps/web/e2e/` open the same document in several browser
+contexts, which act as separate users, and check what each one sees. They cover
+syncing in both directions, formatting, a late joiner, undo, the name dialog,
+the presence list, live renames and people leaving.
+
+First time only, download the browser Playwright tests with:
+
+```sh
+pnpm --filter web exec playwright install chromium
+```
+
+Then, from the repo root:
+
+```sh
+pnpm test:e2e                                  # all tests
+pnpm --filter web exec playwright test --ui    # interactive runner
+```
+
+You don't need `pnpm dev` running: Playwright starts the collaboration server
+and Vite itself. If they're already running, it reuses them, except in CI.
+On Windows the tests also run in the installed Microsoft Edge. One bug, a
+user staying in the list for 30 s after closing their tab, only reproduced
+there.
 
 ## UI components (shadcn/ui)
 
