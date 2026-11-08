@@ -2,6 +2,11 @@ packages:
   - "apps/*"
   - "packages/*"
 
+# Packages allowed to run install scripts. esbuild (used by tsx) checks that
+# the right native binary for this platform is installed.
+allowBuilds:
+  esbuild: true
+
 # Force a single copy of these across the workspace.
 # Two copies of yjs (or lexical) in one bundle break instanceof checks
 # and trigger the "Yjs was already imported" warning. See PLAN.md, pitfall 3.
