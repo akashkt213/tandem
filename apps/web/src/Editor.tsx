@@ -1,10 +1,13 @@
-import { HistoryExtension } from '@lexical/history'
 import { LinkExtension } from '@lexical/link'
 import { ListExtension } from '@lexical/list'
+import { LexicalCollaboration } from '@lexical/react/LexicalCollaborationContext'
+import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalExtensionComposer } from '@lexical/react/LexicalExtensionComposer'
 import { RichTextExtension } from '@lexical/rich-text'
 import { defineExtension, type EditorThemeClasses } from 'lexical'
+import { useRef } from 'react'
+import { createProvider } from '@/collab/providerFactory'
 import { Toolbar } from '@/Toolbar'
 import EditorStateLogger from './lib/editorLogger'
 
@@ -42,14 +45,20 @@ const editorExtension = defineExtension({
     name: '@collab/editor',
     namespace: 'CollabEditor',
     theme,
+    // Start with an *empty* root: no blocks at all. The shared Yjs document is the
+    // source of truth; CollaborationPlugin fills the editor from it (or, for a new
+    // document, `shouldBootstrap` adds the first paragraph after the initial sync).
+    // Must be explicitly null: leaving it undefined makes InitialStateExtension add
+    // a local paragraph, the extension equivalent of LexicalComposer's
+    // `editorState: null` requirement in the collaboration docs.
+    $initialEditorState: null,
     dependencies: [
         RichTextExtension, // headings, quotes, bold/italic/underline, keyboard handling
         ListExtension, // ul/ol nodes + list commands
         LinkExtension, // link nodes + TOGGLE_LINK_COMMAND
-        // NOTE: remove HistoryExtension in Stage 4. With collaboration, undo/redo has
-        // to go through the Yjs UndoManager (CollaborationPlugin sets that up), and
-        // Lexical's own history conflicts with it. See PLAN.md, pitfall 7.
-        HistoryExtension,
+        // No HistoryExtension: with collaboration, undo/redo goes through the Yjs
+        // UndoManager that CollaborationPlugin sets up (it only undoes *your* edits,
+        // not other people's). Lexical's own history would conflict with it.
     ],
     onError: (error) => {
         // Lexical's default rethrows; log as well so errors are easy to spot in dev.
@@ -58,34 +67,62 @@ const editorExtension = defineExtension({
     },
 })
 
-export function Editor() {
+type EditorProps = {
+    /** Document id from the URL; also the Hocuspocus document name. */
+    docId: string
+}
+
+// Mount with key={docId}: a mounted editor can't be repointed at another document.
+export function Editor({ docId }: EditorProps) {
+    // Remote cursors are rendered into this element. Lexical positions them
+    // relative to its offsetParent (the `relative` content wrapper below), which
+    // scrolls together with the text, so cursors stay on the right line.
+    const cursorsContainerRef = useRef<HTMLDivElement>(null)
+
     return (
-        // contentEditable={null}: by default the composer renders the ContentEditable
-        // *before* its children. We render it ourselves so the toolbar can sit above it.
-        <LexicalExtensionComposer extension={editorExtension} contentEditable={null}>
-            <EditorStateLogger />
-            {/* Fixed-height card: a flex column where the toolbar keeps its height and the
+        // Holds the shared collaboration state (yjsDocMap, user name/color) for the
+        // editors below it. CollaborationPlugin must be inside one.
+        <LexicalCollaboration>
+            {/* contentEditable={null}: by default the composer renders the ContentEditable
+            *before* its children. We render it ourselves so the toolbar can sit above it. */}
+            <LexicalExtensionComposer extension={editorExtension} contentEditable={null}>
+                <EditorStateLogger />
+                <CollaborationPlugin
+                    id={docId}
+                    providerFactory={createProvider}
+                    // The first client to open an empty document adds its first paragraph.
+                    // Known race: two clients opening a brand-new doc at the same moment
+                    // can both add one (a stray blank line). Fine for Phase 1.
+                    shouldBootstrap
+                    cursorsContainerRef={cursorsContainerRef}
+                />
+                {/* Fixed-height card: a flex column where the toolbar keeps its height and the
                 content area takes the rest and scrolls (min-h-0 lets it shrink below its
                 content so overflow-y-auto can kick in). */}
-            <div className="flex h-[70vh] min-h-80 flex-col overflow-hidden rounded-xl border bg-background shadow-xs focus-within:ring-3 focus-within:ring-ring/50">
-                <div className="shrink-0">
-                    <Toolbar />
+                <div className="flex h-[70vh] min-h-80 flex-col overflow-hidden rounded-xl border bg-background shadow-xs focus-within:ring-3 focus-within:ring-ring/50">
+                    <div className="shrink-0">
+                        <Toolbar />
+                    </div>
+                    {/* The scroll container. Lexical scrolls the cursor into view inside it
+                    while typing. */}
+                    <div className="min-h-0 flex-1 overflow-y-auto">
+                        {/* Content wrapper: `relative` so the placeholder and remote cursors
+                        are positioned against it and scroll with the text. */}
+                        <div className="relative min-h-full">
+                            <ContentEditable
+                                className="min-h-full px-6 py-5 text-base outline-none"
+                                aria-placeholder="Start writing…"
+                                placeholder={
+                                    <div className="pointer-events-none absolute top-5 left-6 text-muted-foreground select-none">
+                                        Start writing…
+                                    </div>
+                                }
+                            />
+                            <div ref={cursorsContainerRef} />
+                        </div>
+                    </div>
                 </div>
-                {/* The scroll container. `relative` so the placeholder sits over the first
-                    line and scrolls with the content. Lexical scrolls the cursor into view
-                    inside this element while typing. */}
-                <div className="relative min-h-0 flex-1 overflow-y-auto">
-                    <ContentEditable
-                        className="min-h-full px-6 py-5 text-base outline-none"
-                        aria-placeholder="Start writing…"
-                        placeholder={
-                            <div className="pointer-events-none absolute top-5 left-6 text-muted-foreground select-none">
-                                Start writing…
-                            </div>
-                        }
-                    />
-                </div>
-            </div>
-        </LexicalExtensionComposer>
+            </LexicalExtensionComposer>
+        </LexicalCollaboration>
     )
 }

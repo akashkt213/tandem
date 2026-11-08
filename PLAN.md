@@ -175,6 +175,25 @@ two-client Playwright test could hit.
     flips on `synced`. Use `expect.poll` / `toHaveText` rather than fixed sleeps. Use a unique doc
     id per test so runs don't interfere.
 
+### Found while connecting the editor (verified against 0.53 / 4.8 sources)
+
+13. **Extensions API: set `$initialEditorState: null` explicitly.** If it's left
+    `undefined`, `InitialStateExtension` adds a local paragraph. That's the extension
+    equivalent of `editorState: null` in the collab docs.
+14. **No Yjs 13 collaboration extension exists** (only `@lexical/y` for Yjs 14). Use the
+    React `CollaborationPlugin` as a child of `LexicalExtensionComposer`, inside
+    `<LexicalCollaboration>`.
+15. **`autoConnect: false` isn't in `HocuspocusProviderConfiguration`'s type**, but the
+    provider forwards its config to the socket it creates, so it works. It's passed via
+    a variable to get past TypeScript's excess-property check. Re-check on upgrade.
+16. **Provider cleanup:** destroy the previous provider when the next one is created, not
+    in an effect cleanup. In StrictMode, `CollaborationPlugin` deliberately reuses its
+    provider after the simulated unmount.
+17. **Dev-only console warning** "WebSocket is closed before the connection is
+    established" comes from the StrictMode double mount. A production build shows none.
+18. **Undo grouping:** the Yjs UndoManager merges your edits made within 500 ms into one
+    undo step, and only ever undoes your own edits.
+
 ## 6. Stages
 
 1. ✅ Plan (this file)

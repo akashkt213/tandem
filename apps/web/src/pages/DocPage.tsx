@@ -31,7 +31,7 @@ export default function DocPage() {
 
       {/* key: give each document a fresh editor. Lexical can't repoint a mounted
           editor at another doc, so navigating /doc/a → /doc/b must remount it. */}
-      <Editor key={id} />
+      <Editor key={id} docId={id!} />
     </div>
   )
 }
