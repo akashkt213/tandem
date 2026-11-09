@@ -1,45 +1,29 @@
-import { Server } from '@hocuspocus/server'
-import { COLLAB_HOST, COLLAB_PORT } from '@collab/shared'
+// First import: loads .env and validates it, exiting with a clear message if
+// anything is missing, before any other module reads configuration.
+import './env'
 
-// Phase 1: in-memory only. Hocuspocus keeps each document in memory while at
-// least one client is connected and unloads it when the last one leaves, so
-// content is lost once everyone disconnects. Persistence comes in Phase 2.
-const server = new Server({
-  name: 'collab-dev', // label for this instance in logs
-  port: COLLAB_PORT,
-  // Loopback only: there's no auth yet, so don't accept connections from the network.
-  address: COLLAB_HOST,
+import { createServer } from 'node:http'
+import { API_HOST, API_PORT } from '@collab/shared'
+import { createApp } from './app'
+import { startCollabServer } from './collab'
 
-  // Close a connection if no message (including pings) arrives for this long.
-  timeout: 60_000,
+// Two servers in one process for now: the HTTP API (auth, document list) and
+// Hocuspocus (real-time editing over WebSocket). They can share one port later.
+const api = createServer(createApp())
 
-  // How often onStoreDocument fires after edits. Nothing is stored yet, so these
-  // do nothing in Phase 1; they're kept for the database in Phase 2.
-  debounce: 5_000,
-  maxDebounce: 30_000,
-
-  // Log connects, document loads and disconnects. Set true to silence.
-  quiet: false,
-
-  // Options for the underlying WebSocket server. These apply before
-  // authentication, so they cap what one connection can make the server buffer.
-  // A single message over 1 MB (e.g. an enormous paste) closes that connection.
-  websocketOptions: { maxPayload: 1024 * 1024 },
-})
-
-// Startup errors (e.g. port in use) are emitted as an 'error' event on the
-// underlying http.Server. Hocuspocus 4.8's listen() doesn't forward that event
-// to its promise: the promise never settles and Node crashes with an unhandled
-// 'error' event. So handle it here instead of with try/catch around listen().
-server.httpServer.once('error', (error: NodeJS.ErrnoException) => {
+api.once('error', (error: NodeJS.ErrnoException) => {
   if (error.code === 'EADDRINUSE') {
-    console.error(
-      `Port ${COLLAB_PORT} is already in use. Is another copy of the server running?`,
-    )
+    console.error(`Port ${API_PORT} is already in use. Is another copy of the server running?`)
   } else {
-    console.error('Failed to start the collaboration server:', error)
+    console.error('Failed to start the API server:', error)
   }
   process.exit(1)
 })
 
-await server.listen()
+// Loopback only, like the collab server. In development the browser reaches it
+// through Vite's /api proxy.
+api.listen(API_PORT, API_HOST, () => {
+  console.log(`API listening on http://${API_HOST}:${API_PORT}`)
+})
+
+await startCollabServer()

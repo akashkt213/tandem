@@ -19,5 +19,11 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true, // Playwright (Stage 5) expects this exact port
+    // Forward API calls to the Express server, so the browser sees one origin
+    // and auth cookies work without CORS. Must match API_HOST / API_PORT in
+    // packages/shared/src/index.ts.
+    proxy: {
+      '/api': 'http://127.0.0.1:3000',
+    },
   },
 })

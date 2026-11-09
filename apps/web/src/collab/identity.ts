@@ -1,4 +1,9 @@
+import { USER_COLORS } from '@collab/shared'
 import { useSyncExternalStore } from 'react'
+
+// Defined in the shared package (the server picks from it too); re-exported so
+// existing imports from '@/collab/identity' keep working.
+export { USER_COLORS }
 
 /**
  * Who "you" are: the name and colour other people see on your cursor and in
@@ -12,21 +17,6 @@ export type Identity = {
   /** False until you've seen the name dialog once (saved or dismissed it). */
   confirmed: boolean
 }
-
-// Darker shades (Tailwind 600–700): Lexical draws cursor labels as white text on
-// this colour, so lighter shades would be hard to read.
-export const USER_COLORS = [
-  '#dc2626', // red
-  '#c2410c', // orange
-  '#b45309', // amber
-  '#15803d', // green
-  '#0f766e', // teal
-  '#0369a1', // sky
-  '#2563eb', // blue
-  '#7c3aed', // violet
-  '#c026d3', // fuchsia
-  '#db2777', // pink
-] as const
 
 export const MAX_NAME_LENGTH = 32
 
