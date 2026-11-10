@@ -1,16 +1,10 @@
-import { USER_COLORS, type PublicUser } from '@collab/shared'
+import { USER_COLORS, loginSchema, signupSchema, type PublicUser } from '@collab/shared'
 import express, { type Request, type Response } from 'express'
 import { rateLimit } from 'express-rate-limit'
 import { z } from 'zod'
 import { isUniqueViolation, pool } from '../db'
 import { requireAuth } from './middleware'
-import {
-  MAX_PASSWORD_BYTES,
-  MIN_PASSWORD_LENGTH,
-  hashPassword,
-  passwordByteLength,
-  verifyPassword,
-} from './password'
+import { hashPassword, verifyPassword } from './password'
 import {
   REFRESH_COOKIE,
   clearSessionCookies,
@@ -22,24 +16,9 @@ import {
 
 // --- Validation --------------------------------------------------------------
 
-// Trimmed and lowercased before validating, so " Akash@Gmail.com " is stored
-// and looked up as "akash@gmail.com" (matching the lower(email) unique index).
-const emailSchema = z.string().trim().toLowerCase().pipe(z.email('Enter a valid email').max(254))
-
-const signupSchema = z.object({
-  email: emailSchema,
-  fullName: z.string().trim().min(1, 'Enter your name').max(100),
-  password: z
-    .string()
-    .min(MIN_PASSWORD_LENGTH, `Use at least ${MIN_PASSWORD_LENGTH} characters`)
-    .refine((p) => passwordByteLength(p) <= MAX_PASSWORD_BYTES, 'Password is too long'),
-})
-
-const loginSchema = z.object({
-  email: emailSchema,
-  // No strength rules on login: only check it's present and not absurdly long.
-  password: z.string().min(1, 'Enter your password').max(1024),
-})
+// signupSchema and loginSchema come from @collab/shared: the web form checks
+// the same rules before sending, and they're checked again here because a
+// request doesn't have to come from our form.
 
 /** The parsed body, or null after sending a 400 with per-field messages. */
 function parseBody<T extends z.ZodType>(schema: T, req: Request, res: Response): z.infer<T> | null {

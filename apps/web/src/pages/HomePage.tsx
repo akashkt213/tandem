@@ -2,6 +2,7 @@ import { ArrowRightIcon, PlusIcon } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { paths } from '@/routes/paths'
 
 // Short, URL-safe id for a new document, e.g. "k3f9x2ab".
 function newDocId(): string {
@@ -28,7 +29,7 @@ export default function HomePage() {
       </p>
 
       <div className="flex w-full items-center justify-center gap-2 pt-2">
-        <Button size="sm" onClick={() => navigate(`/doc/${newDocId()}`)}>
+        <Button size="sm" onClick={() => navigate(paths.doc(newDocId()))}>
           <PlusIcon data-icon="inline-start" />
           New document
         </Button>
