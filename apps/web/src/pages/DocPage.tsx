@@ -1,5 +1,6 @@
 import { ArrowLeftIcon } from 'lucide-react'
 import { Link, useParams } from 'react-router'
+import { paths } from '@/routes/paths'
 import { useIdentity } from '@/collab/identity'
 import { NameDialog } from '@/components/name-dialog'
 import { PresenceBar } from '@/components/presence-bar'
@@ -17,7 +18,7 @@ export default function DocPage() {
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-4 px-4 py-6 md:px-6">
       <div>
         <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
-          <Link to="/">
+          <Link to={paths.home}>
             <ArrowLeftIcon data-icon="inline-start" />
             Back
           </Link>

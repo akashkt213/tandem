@@ -1,4 +1,5 @@
 import { Link } from 'react-router'
+import { paths } from '@/routes/paths'
 import { Button } from '@/components/ui/button'
 
 export default function NotFoundPage() {
@@ -8,7 +9,7 @@ export default function NotFoundPage() {
       <h1 className="text-3xl font-semibold tracking-tight">Page not found</h1>
       <p className="text-muted-foreground">This page doesn't exist.</p>
       <Button asChild size="sm" variant="outline" className="mt-2">
-        <Link to="/">Go home</Link>
+        <Link to={paths.home}>Go home</Link>
       </Button>
     </section>
   )

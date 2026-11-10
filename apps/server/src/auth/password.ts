@@ -8,16 +8,8 @@ import bcrypt from 'bcryptjs'
 // working because the cost is stored inside each hash.
 const COST = 12
 
-// bcrypt silently ignores everything after the first 72 bytes, so
-// "<72 bytes>A" and "<72 bytes>B" would be the same password. Signup
-// validation must reject longer passwords (bytes, not characters: emoji and
-// non-Latin letters take 2–4 bytes each).
-export const MAX_PASSWORD_BYTES = 72
-export const MIN_PASSWORD_LENGTH = 8
-
-export function passwordByteLength(password: string): number {
-  return Buffer.byteLength(password, 'utf8')
-}
+// Password length rules (including bcrypt's 72-byte limit) live with the
+// signup schema in @collab/shared, so the web form enforces the same ones.
 
 export function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, COST)
