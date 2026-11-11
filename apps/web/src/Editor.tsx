@@ -6,7 +6,8 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalExtensionComposer } from '@lexical/react/LexicalExtensionComposer'
 import { RichTextExtension } from '@lexical/rich-text'
 import { defineExtension, type EditorThemeClasses } from 'lexical'
-import { useRef, useState } from 'react'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { useEffect, useRef, useState } from 'react'
 import { useIdentity } from '@/collab/identity'
 import { useCollabProvider, useSyncIdentityToAwareness } from '@/collab/presence'
 import { createProvider } from '@/collab/providerFactory'
@@ -69,13 +70,31 @@ const editorExtension = defineExtension({
     },
 })
 
+/**
+ * Turns typing on or off. The collab server already ignores edits from a
+ * read-only connection; this makes the editor say so instead of letting you
+ * type changes that would never be saved.
+ */
+function EditablePlugin({ editable }: { editable: boolean }) {
+    const [editor] = useLexicalComposerContext()
+    useEffect(() => {
+        editor.setEditable(editable)
+    }, [editor, editable])
+    return null
+}
+
 type EditorProps = {
     /** Document id from the URL; also the Hocuspocus document name. */
     docId: string
+    /**
+     * False until the server has confirmed you may edit (and for viewers), so
+     * nothing typed before the server's answer gets thrown away.
+     */
+    editable: boolean
 }
 
 // Mount with key={docId}: a mounted editor can't be repointed at another document.
-export function Editor({ docId }: EditorProps) {
+export function Editor({ docId, editable }: EditorProps) {
     // Remote cursors are rendered into this element. Lexical positions them
     // relative to its offsetParent (the `relative` content wrapper below), which
     // scrolls together with the text, so cursors stay on the right line.
@@ -101,6 +120,7 @@ export function Editor({ docId }: EditorProps) {
             *before* its children. We render it ourselves so the toolbar can sit above it. */}
             <LexicalExtensionComposer extension={editorExtension} contentEditable={null}>
                 <EditorStateLogger />
+                <EditablePlugin editable={editable} />
                 <CollaborationPlugin
                     id={docId}
                     providerFactory={createProvider}
@@ -117,9 +137,12 @@ export function Editor({ docId }: EditorProps) {
                 content area takes the rest and scrolls (min-h-0 lets it shrink below its
                 content so overflow-y-auto can kick in). */}
                 <div className="flex h-[70vh] min-h-80 flex-col overflow-hidden rounded-xl border bg-background shadow-xs focus-within:ring-3 focus-within:ring-ring/50">
-                    <div className="shrink-0">
-                        <Toolbar />
-                    </div>
+                    {/* No formatting buttons when you can't edit. */}
+                    {editable && (
+                        <div className="shrink-0">
+                            <Toolbar />
+                        </div>
+                    )}
                     {/* The scroll container. Lexical scrolls the cursor into view inside it
                     while typing. */}
                     <div className="min-h-0 flex-1 overflow-y-auto">

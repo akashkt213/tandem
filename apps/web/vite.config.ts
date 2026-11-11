@@ -19,11 +19,21 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true, // Playwright (Stage 5) expects this exact port
-    // Forward API calls to the Express server, so the browser sees one origin
-    // and auth cookies work without CORS. Must match API_HOST / API_PORT in
+    // Forward the backend through Vite, so the browser only ever talks to
+    // localhost:5173 and sends the auth cookies with every request.
+    // Targets must match API_HOST/API_PORT and COLLAB_HOST/COLLAB_PORT in
     // packages/shared/src/index.ts.
     proxy: {
+      // Express: auth and other HTTP endpoints.
       '/api': 'http://127.0.0.1:3000',
+      // Hocuspocus: the editor's WebSocket (COLLAB_PATH). `ws: true` proxies
+      // the WebSocket upgrade. The path is forwarded as-is; Hocuspocus accepts
+      // connections on any path. The Origin header is left untouched, so the
+      // collab server can check where the connection came from.
+      '/collab': {
+        target: 'http://127.0.0.1:1234',
+        ws: true,
+      },
     },
   },
 })
