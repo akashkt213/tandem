@@ -10,7 +10,18 @@ import { z } from 'zod'
 // on Windows "localhost" can resolve to the IPv6 address ::1, which wouldn't connect.
 export const COLLAB_HOST = '127.0.0.1'
 export const COLLAB_PORT = 1234
-export const COLLAB_URL = `ws://${COLLAB_HOST}:${COLLAB_PORT}`
+
+// The browser never connects to COLLAB_PORT directly. It opens a WebSocket to
+// this path on the web app's own host, and Vite proxies it to the collab server
+// (see apps/web/vite.config.ts). Same host as the page means the browser sends
+// the auth cookies with the WebSocket handshake.
+export const COLLAB_PATH = '/collab'
+
+// Reason the collab server gives when it detaches someone from a document
+// because its sharing changed. One WebSocket can carry several documents, so
+// the socket stays open and nothing reconnects by itself: on this reason the
+// client authenticates again (getting the new permissions) and resyncs.
+export const COLLAB_ACCESS_CHANGED = 'access-changed'
 
 // --- HTTP API (auth, document list) -----------------------------------------
 
@@ -71,6 +82,32 @@ export const loginSchema = z.object({
 
 export type SignupInput = z.infer<typeof signupSchema>
 export type LoginInput = z.infer<typeof loginSchema>
+
+// --- Documents ---------------------------------------------------------------
+
+/**
+ * What anyone with the link may do (documents.link_access). The owner can
+ * always edit, whatever this says.
+ */
+export const LINK_ACCESS = ['editor', 'viewer', 'none'] as const
+export type LinkAccess = (typeof LINK_ACCESS)[number]
+
+/** Body of PATCH /api/documents/:id. Only the owner may send it. */
+export const updateDocumentSchema = z.object({
+  linkAccess: z.enum(LINK_ACCESS, 'Choose who can open the link'),
+})
+export type UpdateDocumentInput = z.infer<typeof updateDocumentSchema>
+
+/** A document as GET /api/documents/:id returns it. */
+export type DocumentInfo = {
+  id: string
+  title: string
+  linkAccess: LinkAccess
+  /** Whether the person asking owns it (and so may change sharing). */
+  isOwner: boolean
+  createdAt: string // ISO 8601
+  updatedAt: string // ISO 8601
+}
 
 // --- Users -------------------------------------------------------------------
 

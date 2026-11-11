@@ -1,7 +1,9 @@
-import { COLLAB_URL } from '@collab/shared'
+import { COLLAB_ACCESS_CHANGED, COLLAB_PATH } from '@collab/shared'
 import { HocuspocusProvider } from '@hocuspocus/provider'
 import type { Provider } from '@lexical/yjs'
 import * as Y from 'yjs'
+import { trackAccess } from '@/collab/access'
+import { ensureFreshSession } from '@/lib/session'
 
 /**
  * HocuspocusProvider, adapted to the provider interface Lexical's
@@ -64,6 +66,20 @@ class LexicalHocuspocusProvider extends HocuspocusProvider {
 // using a provider we had just destroyed.
 let currentProvider: HocuspocusProvider | null = null
 
+/**
+ * Where the editor's WebSocket connects: /collab on the page's own host
+ * (ws://localhost:5173/collab in dev, wss:// on an https site), which Vite
+ * proxies to the collab server. Being the same host as the page is what makes
+ * the browser send the auth cookies (access_token, guest_id) along.
+ * Set VITE_COLLAB_URL to connect somewhere else.
+ */
+function collabUrl(): string {
+  const override: string | undefined = import.meta.env.VITE_COLLAB_URL
+  if (override) return override
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${protocol}//${window.location.host}${COLLAB_PATH}`
+}
+
 // Lets React components outside the editor (presence list, status badge) find
 // the provider. See useCollabProvider in ./presence.ts.
 const providerListeners = new Set<() => void>()
@@ -123,6 +139,24 @@ function guardAwarenessWhileLeaving(provider: HocuspocusProvider) {
 }
 
 /**
+ * When the owner changes sharing, the server detaches everyone else from the
+ * document with reason COLLAB_ACCESS_CHANGED. The WebSocket itself stays open
+ * (it can carry several documents), so the provider wouldn't reconnect on its
+ * own and would just sit there, detached.
+ *
+ * Do what the provider does when a socket opens: send the token again (the
+ * server runs onAuthenticate with the new rules and answers with the new
+ * scope, or denies) and restart the sync handshake.
+ */
+function reauthenticateWhenAccessChanges(provider: HocuspocusProvider) {
+  provider.on('close', async ({ event }: { event: { reason?: string } }) => {
+    if (event.reason !== COLLAB_ACCESS_CHANGED) return
+    await provider.sendToken()
+    provider.startSync()
+  })
+}
+
+/**
  * The providerFactory passed to <CollaborationPlugin>. Module-level, so its
  * identity is stable: the plugin replaces its provider whenever the factory
  * changes identity.
@@ -138,7 +172,7 @@ export function createProvider(id: string, yjsDocMap: Map<string, Y.Doc>): Provi
   yjsDocMap.set(id, doc)
 
   const config = {
-    url: COLLAB_URL,
+    url: collabUrl(),
     name: id, // Hocuspocus document name = the :id in /doc/:id
     document: doc,
     // Don't connect on construction. CollaborationPlugin calls provider.connect()
@@ -153,11 +187,22 @@ export function createProvider(id: string, yjsDocMap: Map<string, Y.Doc>): Provi
     // It's in a variable, not an object literal, so TypeScript's excess-property
     // check allows it. Re-check this when upgrading Hocuspocus.
     autoConnect: false,
+    // Called before every (re)connect. The server identifies us by cookies,
+    // not by this token, so it returns ''. What matters is the side effect:
+    // the access token cookie only lives 15 minutes, while a socket can stay
+    // open for hours. If it drops and reconnects with an expired cookie, the
+    // server would treat a logged-in user as a guest, so refresh it first.
+    token: async () => {
+      await ensureFreshSession()
+      return ''
+    },
   }
   // Passing `url` (not a shared websocketProvider) makes this provider own its
   // socket, which is required for connect()/disconnect() to do anything in v4.
   const provider = new LexicalHocuspocusProvider(config)
   guardAwarenessWhileLeaving(provider)
+  trackAccess(provider) // before connect(), so the server's first answer isn't missed
+  reauthenticateWhenAccessChanges(provider)
   currentProvider = provider
   // Called from CollaborationPlugin's effect (not during render), so notifying
   // subscribers here is safe.

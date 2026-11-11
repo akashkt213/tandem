@@ -1,8 +1,9 @@
 import { USER_COLORS, loginSchema, signupSchema, type PublicUser } from '@collab/shared'
-import express, { type Request, type Response } from 'express'
+import express, { type Request, type RequestHandler, type Response } from 'express'
 import { rateLimit } from 'express-rate-limit'
 import { z } from 'zod'
 import { isUniqueViolation, pool } from '../db'
+import { ensureGuestId } from './guest'
 import { requireAuth } from './middleware'
 import { hashPassword, verifyPassword } from './password'
 import {
@@ -146,7 +147,14 @@ authRouter.post('/logout', async (req, res) => {
   res.status(204).end()
 })
 
-authRouter.get('/me', requireAuth, async (req, res) => {
+// Runs before requireAuth, so guests (who get a 401 from it) still receive
+// their guest cookie. The web app calls /me on every page load.
+const withGuestCookie: RequestHandler = (req, res, next) => {
+  ensureGuestId(req, res)
+  next()
+}
+
+authRouter.get('/me', withGuestCookie, requireAuth, async (req, res) => {
   const { rows } = await pool.query<UserRow>(`select ${USER_COLUMNS} from users where id = $1`, [
     req.userId,
   ])

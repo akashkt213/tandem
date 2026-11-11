@@ -2,6 +2,7 @@ import { API_PREFIX } from '@collab/shared'
 import cookieParser from 'cookie-parser'
 import express, { type ErrorRequestHandler, type RequestHandler } from 'express'
 import { authRouter } from './auth/routes'
+import { documentsRouter } from './documents/routes'
 import { pool } from './db'
 import { env } from './env'
 
@@ -39,6 +40,7 @@ export function createApp() {
   })
 
   api.use('/auth', authRouter)
+  api.use('/documents', documentsRouter)
 
   app.use(API_PREFIX, api)
 
